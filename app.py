@@ -21,8 +21,12 @@
 # we are going to use the diskdb library to store image
 # data, the key is going to be the non-full url
 
+
 def get_key(url,size='full'):
-    return '%s_%s' % (size,url)
+    import os
+    key = '%s_%s' % (size,url)
+    key = key.replace(os.sep,'_')
+    return key
 
 def get_thumbnail(storage_root,full_url,size):
     from diskdb import SimpleBlip as Blip
@@ -31,6 +35,7 @@ def get_thumbnail(storage_root,full_url,size):
     parsed = urlparse.urlparse(full_url) # break up our url to strip args
     url = '%s://%s%s' % (parsed.scheme,parsed.netloc,parsed.path) # recreate
     key = get_key(url,size) # get the key for this file's storage
+    print 'key: %s' % key
 
     # check and see if we have the thumbnail already
     thumbnail = Blip(storage_root,key)
@@ -39,23 +44,30 @@ def get_thumbnail(storage_root,full_url,size):
     # if we don't have the thumbnail check and see if
     # we have the original
     if not thumbnail_data:
+        print 'no thumbnail data'
         original = Blip(storage_root,get_key(url))
         original_data = original.get_value()
 
     # if we don't have the original send off a task to
     # download it
     if not thumbnail_data and not original_data:
-        original_data = download_resource(url)
+        print 'no original data'
+        original_data = gearman_download_resource(url)
         original.set_value(original_data)
         original.flush()
 
     if not thumbnail_data:
+        print 'creating thumbnail'
         # now that we've downloaded it we need to get it resized
-        thumbnail_data = thumbnail_image(size,original_data)
+        thumbnail_data = gearman_thumbnail_image(size,original_data)
         thumbnail.set_value(thumbnail_data)
         thumbnail.flush()
 
     return thumbnail_data
+
+def gearman_download_resource(url):
+    from gearmanlib import helpers
+    return helpers.call_gearman('app_download_resource',url)
 
 def download_resource(url):
     from urllib2 import urlopen
@@ -64,6 +76,11 @@ def download_resource(url):
     except Exception, ex:
         return None
     return data
+
+def gearman_thumbnail_image(size,data=None,in_path=None,out_path=None):
+    from gearmanlib import helpers
+    return helpers.call_gearman('app_thumbnail_image',size,data,in_path,
+                                                      out_path)
 
 def thumbnail_image(size,data=None,in_path=None,out_path=None):
     import subprocess
