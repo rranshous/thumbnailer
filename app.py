@@ -53,14 +53,14 @@ def get_thumbnail(storage_root,full_url,size):
     # download it
     if not thumbnail_data and not original_data:
         print 'no original data'
-        original_data = gearman_download_resource(url)
+        original_data = download_resource(url)
         original.set_value(original_data)
         original.flush()
 
     if not thumbnail_data:
         print 'creating thumbnail'
         # now that we've downloaded it we need to get it resized
-        thumbnail_data = gearman_thumbnail_image(size,original_data)
+        thumbnail_data = thumbnail_image(size,original_data)
         thumbnail.set_value(thumbnail_data)
         thumbnail.flush()
 
