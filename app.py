@@ -21,6 +21,7 @@
 # we are going to use the diskdb library to store image
 # data, the key is going to be the non-full url
 
+GEARMAN_HOSTS = []
 
 def get_key(url,size='full'):
     import os
@@ -67,7 +68,7 @@ def get_thumbnail(storage_root,full_url,size):
 
 def gearman_download_resource(url):
     from gearmanlib import helpers
-    return helpers.call_gearman('app_download_resource',url)
+    return helpers.call_gearman('app_download_resource',url,hosts=GEARMAN_HOSTS)
 
 def download_resource(url):
     from urllib2 import urlopen
@@ -80,7 +81,8 @@ def download_resource(url):
 def gearman_thumbnail_image(size,data=None,in_path=None,out_path=None):
     from gearmanlib import helpers
     return helpers.call_gearman('app_thumbnail_image',size,data,in_path,
-                                                      out_path)
+                                                      out_path,
+                                hosts=GEARMAN_HOSTS)
 
 def thumbnail_image(size,data=None,in_path=None,out_path=None):
     import subprocess
