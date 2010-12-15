@@ -1,0 +1,21 @@
+Playing w/ the concept of subdomain as application layers, specifically creating thumbnails on the fly as a service.
+
+=====
+
+I operate a site, point a cname entry @ the thumbnail service on my 'thumbnail' subdomain.
+
+In my code i can now add something like <img src="http://thumbnail.mysite.com/imgs/sweet_pic.jpg?size=200".. to my page and have a thumbnail come back
+
+the app d/l's the original img, resizes it, returns the thumbnail.
+
+wait a minute, isn't it inconvenient to have to write out your entire domain in the src? yes. fuck.
+
+====
+
+How simple can a script be and still be a distributed application layer for creating and serving thumbnails?
+
+Right now I'm playing w/ gearman to do the distribution work. Is it possible to create async versions of functions on the fly? Can a simple wrapper turn a python lib into a set of workers?
+
+diskdb to do the data storing. doesn't do in memory caching, the current idea basically has a reverse squid proxy doing the caching above the application layer.
+
+
