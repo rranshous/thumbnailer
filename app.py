@@ -68,7 +68,8 @@ def get_thumbnail(storage_root,full_url,size):
 
 def gearman_download_resource(url):
     from gearmanlib import helpers
-    return helpers.call_gearman('app_download_resource',url,hosts=GEARMAN_HOSTS)
+    return helpers.call_gearman(helpers.get_key(gearman_download_resource),
+                                url,hosts=GEARMAN_HOSTS)
 
 def download_resource(url):
     from urllib2 import urlopen
