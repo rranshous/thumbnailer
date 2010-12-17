@@ -23,11 +23,55 @@
 
 GEARMAN_HOSTS = []
 
+from gearmanlib import helpers
+
 def get_key(url,size='full'):
     import os
     key = '%s_%s' % (size,url)
     key = key.replace(os.sep,'_')
     return key
+
+def gearman_download_resource(url):
+    from gearmanlib import helpers
+    return helpers.call_gearman(helpers.get_key(download_resource),
+                                url,hosts=GEARMAN_HOSTS)
+
+@helpers.farmable
+def download_resource(url):
+    from urllib2 import urlopen
+    try:
+        data = urlopen(url).read()
+    except Exception, ex:
+        return None
+    return data
+
+def gearman_thumbnail_image(size,data=None,in_path=None,out_path=None):
+    from gearmanlib import helpers
+    return helpers.call_gearman(helpers.get_key(thumbnail_image),
+                                size,data,in_path,out_path,
+                                hosts=GEARMAN_HOSTS)
+
+@helpers.farmable
+def thumbnail_image(size,data=None,in_path=None,out_path=None):
+    import subprocess
+    if data:
+        print 'thumbnail_image data: %s' % len(data)
+    if not in_path:
+        in_path = '-'
+    if not out_path:
+        out_path = '-'
+    cmd = ['convert','-thumbnail',size,in_path,out_path]
+    print 'running: %s' % ' '.join(cmd)
+    proc = subprocess.Popen(cmd,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    (out_data,error) = proc.communicate(data)
+    if error:
+        print 'error from cmd: %s' % error
+    if out_path == '-':
+        return out_data
+    return out_path
+
 
 def get_thumbnail(storage_root,full_url,size):
     from diskdb import SimpleBlip as Blip
@@ -53,54 +97,16 @@ def get_thumbnail(storage_root,full_url,size):
     # download it
     if not thumbnail_data and not original_data:
         print 'no original data'
-        original_data = download_resource(url)
+        original_data = download_resource(url,farm=True)
         original.set_value(original_data)
         original.flush()
 
     if not thumbnail_data:
         print 'creating thumbnail'
         # now that we've downloaded it we need to get it resized
-        thumbnail_data = thumbnail_image(size,original_data)
+        thumbnail_data = thumbnail_image(size,original_data,farm=True)
         thumbnail.set_value(thumbnail_data)
         thumbnail.flush()
 
     return thumbnail_data
 
-def gearman_download_resource(url):
-    from gearmanlib import helpers
-    return helpers.call_gearman(helpers.get_key(gearman_download_resource),
-                                url,hosts=GEARMAN_HOSTS)
-
-def download_resource(url):
-    from urllib2 import urlopen
-    try:
-        data = urlopen(url).read()
-    except Exception, ex:
-        return None
-    return data
-
-def gearman_thumbnail_image(size,data=None,in_path=None,out_path=None):
-    from gearmanlib import helpers
-    return helpers.call_gearman('app_thumbnail_image',size,data,in_path,
-                                                      out_path,
-                                hosts=GEARMAN_HOSTS)
-
-def thumbnail_image(size,data=None,in_path=None,out_path=None):
-    import subprocess
-    if data:
-        print 'thumbnail_image data: %s' % len(data)
-    if not in_path:
-        in_path = '-'
-    if not out_path:
-        out_path = '-'
-    cmd = ['convert','-thumbnail',size,in_path,out_path]
-    print 'running: %s' % ' '.join(cmd)
-    proc = subprocess.Popen(cmd,
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE)
-    (out_data,error) = proc.communicate(data)
-    if error:
-        print 'error from cmd: %s' % error
-    if out_path == '-':
-        return out_data
-    return out_path
