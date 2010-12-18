@@ -72,8 +72,8 @@ def thumbnail_image(size,data=None,in_path=None,out_path=None):
         return out_data
     return out_path
 
-
-def get_thumbnail(storage_root,full_url,size):
+@helpers.farmable
+def get_thumbnail(storage_root,full_url,size,timeout=None):
     from diskdb import SimpleBlip as Blip
     import urlparse
     size = str(size) # we need a string
@@ -97,14 +97,14 @@ def get_thumbnail(storage_root,full_url,size):
     # download it
     if not thumbnail_data and not original_data:
         print 'no original data'
-        original_data = download_resource(url,farm=True)
+        original_data = download_resource(url,farm=True,timeout=timeout)
         original.set_value(original_data)
         original.flush()
 
     if not thumbnail_data:
         print 'creating thumbnail'
         # now that we've downloaded it we need to get it resized
-        thumbnail_data = thumbnail_image(size,original_data,farm=True)
+        thumbnail_data = thumbnail_image(size,original_data,farm=True,timeout=timeout)
         thumbnail.set_value(thumbnail_data)
         thumbnail.flush()
 
