@@ -72,10 +72,18 @@ def thumbnail_image(size,data=None,in_path=None,out_path=None):
         return out_data
     return out_path
 
+
+
 @helpers.farmable
 def get_thumbnail(storage_root,full_url,size,timeout=None,farm_work=False):
     from diskdb import SimpleBlip as Blip
     import urlparse
+    import memcache
+
+    # we are going to use memcache as a shared cache
+    # and the drive as a local cache
+    mc = memcache.Client(['memcached.mypubliccode.com:11211'])
+
     size = str(size) # we need a string
     parsed = urlparse.urlparse(full_url) # break up our url to strip args
     url = '%s://%s%s' % (parsed.scheme,parsed.netloc,parsed.path) # recreate
@@ -85,6 +93,10 @@ def get_thumbnail(storage_root,full_url,size,timeout=None,farm_work=False):
     # check and see if we have the thumbnail already
     thumbnail = Blip(storage_root,key)
     thumbnail_data = thumbnail.get_value()
+    if not thumbnail_data:
+        thumbnail_data = mc.get(key)
+        if thumbnail_data:
+            print 'got from mc'
 
     # if we don't have the thumbnail check and see if
     # we have the original
@@ -92,6 +104,10 @@ def get_thumbnail(storage_root,full_url,size,timeout=None,farm_work=False):
         print 'no thumbnail data'
         original = Blip(storage_root,get_key(url))
         original_data = original.get_value()
+        if not original_data:
+            original_data = mc.get(get_key(url))
+            if original_data:
+                print 'got from mc'
 
     # if we don't have the original send off a task to
     # download it
@@ -100,6 +116,7 @@ def get_thumbnail(storage_root,full_url,size,timeout=None,farm_work=False):
         original_data = download_resource(url,farm=True if farm_work else False)
         original.set_value(original_data)
         original.flush()
+        mc.set(get_key(url),original_data)
 
     if not thumbnail_data:
         print 'creating thumbnail'
@@ -108,6 +125,7 @@ def get_thumbnail(storage_root,full_url,size,timeout=None,farm_work=False):
                                          farm=True if farm_work else False)
         thumbnail.set_value(thumbnail_data)
         thumbnail.flush()
+        mc.set(key,thumbnail_data)
 
     return thumbnail_data
 
